@@ -135,3 +135,15 @@ func (s Stack) DebugPrint() {
 
 	fmt.Println(strings.Join(hexData, ""))
 }
+
+func (s Stack) MyDebugPrint() []string {
+	var hexData []string
+
+	stackLen := len(s.data)
+
+	for i := 0; i < stackLen; i++ {
+		hexData = append(hexData, "0x"+s.data[i].Text(16))
+	}
+
+	return hexData
+}

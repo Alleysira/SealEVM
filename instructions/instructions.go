@@ -17,6 +17,8 @@
 package instructions
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/SealSC/SealEVM/environment"
 	"github.com/SealSC/SealEVM/evmErrors"
 	"github.com/SealSC/SealEVM/evmInt256"
@@ -24,6 +26,7 @@ import (
 	"github.com/SealSC/SealEVM/opcodes"
 	"github.com/SealSC/SealEVM/stack"
 	"github.com/SealSC/SealEVM/storage"
+	"strings"
 )
 
 type DynamicGasCostSetting struct {
@@ -104,6 +107,16 @@ type opCodeInstruction struct {
 	finished bool
 }
 
+type MyopcodeInfo struct {
+	PC      uint64   `json:"pc"`
+	Op      uint8    `json:"op"`
+	Gas     string   `json:"gas"`
+	GasCost string   `json:"gasCost"`
+	Memory  string   `json:"memory"`
+	Stack   []string `json:"stack"`
+	Opname  string   `json:"opName"`
+}
+
 type IInstructions interface {
 	ExecuteContract() ([]byte, uint64, error)
 	SetGasLimit(uint64)
@@ -164,6 +177,21 @@ func (i *instructionsContext) ExitOpCode() opcodes.OpCode {
 	return i.exitOpCode
 }
 
+func padTo64Multiple(hexStr string) string {
+	// 计算当前字符串的长度
+	length := len(hexStr)
+
+	// 计算需要填充的字符数
+	paddingNeeded := 64 - (length % 64)
+	if paddingNeeded == 64 {
+		paddingNeeded = 0
+	}
+
+	// 使用"0"字符进行右填充
+	paddedHexStr := hexStr + strings.Repeat("0", paddingNeeded)
+	return paddedHexStr
+}
+
 func (i *instructionsContext) ExecuteContract() (ret []byte, gasRemaining uint64, err error) {
 	defer func() {
 		if e := recover(); e != nil {
@@ -206,7 +234,21 @@ func (i *instructionsContext) ExecuteContract() (ret []byte, gasRemaining uint64
 			err = evmErrors.OutOfGas
 			break
 		}
-
+		opcodeInfo := MyopcodeInfo{
+			PC:      i.pc,
+			Op:      opCode,
+			Gas:     fmt.Sprintf("0x%x", gasLeft),
+			GasCost: fmt.Sprintf("0x%x", constCost),
+			//Memory:  fmt.Sprintf("0x%x", i.memory),
+			//  Memory: "0x" + strings.TrimLeft(printMem, "0"),
+			// Memory: "0x" + printMem,
+			Memory: "0x" + padTo64Multiple(strings.Trim(fmt.Sprintf("%x", i.memory), "\u0026{}")),
+			Stack:  i.stack.MyDebugPrint(),
+			Opname: opcodes.OpCode(opCode).String(),
+		}
+		// Convert opcodeInfo to JSON
+		opcodeJSON, _ := json.Marshal(opcodeInfo)
+		fmt.Println(string(opcodeJSON))
 		ret, err = instruction.action(i)
 
 		if instruction.returns {

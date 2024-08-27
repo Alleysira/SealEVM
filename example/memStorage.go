@@ -4,17 +4,19 @@ import (
 	"errors"
 	"github.com/SealSC/SealEVM/environment"
 	"github.com/SealSC/SealEVM/evmInt256"
+	"math/big"
 	"time"
 )
 
-//external storage for example
+// external storage for example
 type memStorage struct {
 	storage   map[string][]byte
 	contracts map[string][]byte
 }
 
 func (r *memStorage) GetBalance(address *evmInt256.Int) (*evmInt256.Int, error) {
-	return evmInt256.New(1000000000000000000), nil
+	num, _ := new(big.Int).SetString("ffffffffffffffffffffffffffffffffffffffff", 16)
+	return evmInt256.FromBigInt(num), nil
 }
 
 func (r *memStorage) CanTransfer(from, to, val *evmInt256.Int) bool {
