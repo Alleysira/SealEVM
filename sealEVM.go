@@ -17,6 +17,9 @@
 package SealEVM
 
 import (
+	"encoding/json"
+	"fmt"
+
 	"github.com/SealSC/SealEVM/common"
 	"github.com/SealSC/SealEVM/environment"
 	"github.com/SealSC/SealEVM/evmErrors"
@@ -165,20 +168,35 @@ func (e *EVM) ExecuteContract(doTransfer bool) (ExecuteResult, error) {
 	}
 
 	execRet, gasLeft, err := e.instructions.ExecuteContract()
-
-	result.GasLeft = gasLeft
 	result.ResultData = execRet
 	result.ExitOpCode = e.instructions.ExitOpCode()
-
-	if err != nil {
-		result.StorageCache = storage.NewResultCache()
-		e.storage.ClearCache()
-	}
-
 	if e.resultNotify != nil {
 		e.resultNotify(result, err)
 	}
+	output_err := ""
+	if err != nil {
+		output_err = err.Error()
+	}
+	// log.Printf("in sealevm %d", gasLeft)
+	data := struct {
+		Output     string `json:"output"`
+		GasUsed    string `json:"gasUsed"`
+		ExitOpcode string `json:"exitOpcode"`
+		Error      string `json:"error"`
+	}{
+		Output:     fmt.Sprintf("%x", execRet),
+		GasUsed:    "0x" + fmt.Sprintf("%x", 0xffffff-gasLeft),
+		ExitOpcode: fmt.Sprintf("%s", result.ExitOpCode),
+		Error:      fmt.Sprintf("%s", output_err),
+	}
+	// log.Printf("Inside sealevm ExecuteContract %d %d", gasLeft, 0xffffff-gasLeft)
 
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		fmt.Println("JSON编码失败:", err)
+	}
+	// fmt.Println(result.ExitOpCode)
+	fmt.Println(string(jsonData))
 	return result, err
 }
 
